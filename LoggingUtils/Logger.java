@@ -5,6 +5,18 @@ import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Logger is a flexible, thread-safe logging utility with support for
+ * console and file logging, log rotation, and runtime configuration.
+ * <p>
+ * Features:
+ * - Log levels: DEBUG, INFO, WARNING, ERROR, OFF
+ * - Console and file output
+ * - File appending or rolling log file with timestamp
+ * - Automatic log rotation based on file size (default 1MB)
+ * - Thread safety for file operations
+ * - ANSI color-coded console output
+ */
 public class Logger {
     // ANSI color constants
     public static final String RESET = "\u001B[0m";
@@ -33,6 +45,11 @@ public class Logger {
     private boolean fileWriteError = false;
     private int logFileIndex = 0;
 
+    /**
+     * Constructs a new Logger instance with the given name.
+     * The logger will write to console and to a file (log.txt if appending, or timestamped file if not).
+     * @param loggerName a string identifying the logger (shown in output)
+     */
     public Logger(String loggerName) {
         this.loggerName = loggerName;
         initializeLogFile();
@@ -40,6 +57,10 @@ public class Logger {
 
     // --- Public API ---
 
+    /**
+     * Sets the log level. Allowed: 0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR, -1=OFF.
+     * @param logLevel the log level
+     */
     public void setLogLevel(int logLevel) {
         if ((logLevel >= 0 && logLevel < LOG_LEVELS.length) || logLevel == -1) {
             handleLogLevelChange(logLevel);
@@ -51,10 +72,18 @@ public class Logger {
         }
     }
 
+    /**
+     * Gets the current log level as integer.
+     * @return log level int
+     */
     public int getLogLevel() {
         return logLevel;
     }
 
+    /**
+     * Gets the current log level as a string.
+     * @return log level string ("DEBUG", "INFO", "WARNING", "ERROR", "OFF")
+     */
     public String getLogLevelString() {
         if (logLevel == -1) return "OFF";
         if (logLevel < 0 || logLevel >= LOG_LEVELS.length) {
@@ -64,27 +93,51 @@ public class Logger {
         return LOG_LEVELS[logLevel];
     }
 
+    /**
+     * Sets the maximum size of the log file in bytes before rotation occurs.
+     * @param maxBytes the maximum file size in bytes
+     */
     public void setMaxFileSize(long maxBytes) {
         this.maxFileSize = maxBytes;
     }
 
+    /**
+     * Enables or disables file logging at runtime.
+     * @param enabled true to enable, false to disable
+     */
     public void setFileLoggingEnabled(boolean enabled) {
         this.fileLoggingEnabled = enabled;
     }
 
+    /**
+     * Enables or disables console logging at runtime.
+     * @param enabled true to enable, false to disable
+     */
     public void setConsoleLoggingEnabled(boolean enabled) {
         this.consoleLoggingEnabled = enabled;
     }
 
+    /**
+     * Sets whether to append to file (log.txt) or create a new file per run (timestamped).
+     * Re-initializes the log file.
+     * @param append true to append to log.txt, false for a new file per run
+     */
     public void setAppendToFile(boolean append) {
         this.appendToFile = append;
         reinitializeLogFile();
     }
 
+    /**
+     * Returns whether file appending is enabled.
+     * @return true if in append mode, false if new file per run
+     */
     public boolean isAppendToFile() {
         return appendToFile;
     }
 
+    /**
+     * Closes the logger's file handle. Should be called at app shutdown.
+     */
     public void close() {
         synchronized (this) {
             try {
@@ -95,24 +148,44 @@ public class Logger {
         }
     }
 
+    /**
+     * Logs a DEBUG message.
+     * @param message message to log
+     */
     public void debug(String message) {
         log(0, message, PURPLE);
     }
 
+    /**
+     * Logs an INFO message.
+     * @param message message to log
+     */
     public void info(String message) {
         log(1, message, CYAN);
     }
 
+    /**
+     * Logs a WARNING message.
+     * @param message message to log
+     */
     public void warning(String message) {
         log(2, message, YELLOW);
     }
 
+    /**
+     * Logs an ERROR message.
+     * @param message message to log
+     */
     public void error(String message) {
         log(3, message, RED);
     }
 
     // --- Internal Methods ---
 
+    /**
+     * Logs a message to the appropriate outputs if enabled and level is met.
+     * Applies thread safety for file writes.
+     */
     private void log(int level, String message, String color) {
         if (logLevel == -1) return;
         if (level < logLevel || level >= LOG_LEVELS.length || message == null) return;
@@ -129,6 +202,10 @@ public class Logger {
         }
     }
 
+    /**
+     * Gets the name of the calling method for log context.
+     * @return method name as a string
+     */
     private String getCallingMethodName() {
         StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
         for (StackTraceElement ste : stackTrace) {
@@ -140,6 +217,9 @@ public class Logger {
         return "UnknownMethod";
     }
 
+    /**
+     * Formats a log line for output.
+     */
     private String formatLogLine(String timestamp, String level, String loggerName, String methodName, String message) {
         return String.format("%s %-9s %-32s %s",
                 timestamp,
@@ -148,10 +228,17 @@ public class Logger {
                 message);
     }
 
+    /**
+     * Prints a log line to the console with color.
+     */
     private void printToConsole(String logLine, String color) {
         System.out.println(color + logLine + RESET);
     }
 
+    /**
+     * Writes a log line to the log file, performing rotation if needed.
+     * Synchronized for thread safety.
+     */
     private void writeToFile(String logLine) {
         synchronized (this) {
             if (fileWriteError || logWriter == null) return;
@@ -166,12 +253,19 @@ public class Logger {
         }
     }
 
+    /**
+     * Checks the log file size and rotates to a new file if over the limit.
+     */
     private void rotateLogFileIfNeeded() throws IOException {
         if (logFilePath != null && Files.exists(logFilePath) && Files.size(logFilePath) >= maxFileSize) {
             rotateLogFile();
         }
     }
 
+    /**
+     * Rotates the log file by closing the current one and creating a new file
+     * with an incremented index.
+     */
     private void rotateLogFile() throws IOException {
         logWriter.close();
         logFileIndex++;
@@ -182,12 +276,18 @@ public class Logger {
         System.out.println(YELLOW + "Logger: Log file rotated to " + logFilePath + RESET);
     }
 
+    /**
+     * Handles file write errors by disabling file logging and warning the user.
+     */
     private void handleFileWriteError(IOException e) {
         fileWriteError = true;
         fileLoggingEnabled = false;
         System.err.println(RED + "Logger: Error writing to log file. File logging disabled. Error: " + e.getMessage() + RESET);
     }
 
+    /**
+     * Prints an info message when log level is changed.
+     */
     private void handleLogLevelChange(int newLogLevel) {
         if (newLogLevel == -1 && this.logLevel != -1) {
             printToConsole(
@@ -202,6 +302,10 @@ public class Logger {
         }
     }
 
+    /**
+     * Initializes the log file. Uses "log.txt" in append mode, or a timestamped
+     * file for new-per-run mode.
+     */
     private void initializeLogFile() {
         synchronized (this) {
             try {
@@ -222,6 +326,9 @@ public class Logger {
         }
     }
 
+    /**
+     * Re-initializes the log file, closing the previous writer if present.
+     */
     private void reinitializeLogFile() {
         synchronized (this) {
             try {
