@@ -1,9 +1,11 @@
-# Logging Utils: 
-This folder contains my logging utilities. 
+# Logging Utils
 
-### [Logging.java](Logging,java)
-Logging.java is a static logger that can be used for small projects or if you dont require 
-multiple loggers. 
+This folder contains my logging utilities.
 
-### [Logger.java](Logger.java) 
-Object based logger. You can use this if you want to have different logger for different components 
+## Files
+
+- [Logging.java](Logging.java)  
+  Static logger; great for small projects or if you don't require multiple loggers.
+
+- [Logger.java](Logger.java)  
+  Object-based logger. Use this if you want to have different loggers for different components.
